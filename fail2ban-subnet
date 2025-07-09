@@ -20,12 +20,20 @@
 
 import argparse
 import ipaddress
+import itertools
 import logging
 import sys
 
 
 import fail2ban.client.csocket
 import systemd.journal
+
+
+# FIXME: remove when python 3.12 is more common
+def batched(iterable, chunk_size):
+    iterator = iter(iterable)
+    while chunk := tuple(itertools.islice(iterator, chunk_size)):
+        yield chunk
 
 
 def bad_networks(bad_treshold, ip_population):
@@ -136,21 +144,21 @@ class Fail2banClient:
     def get_banned(self, jail: str) -> list:
         return self.get_jail_status(jail)['Actions']['Banned IP list']
 
-    def ban(self, jail, ips):
+    def _ips_cmd(self, cmd, cmd_log, jail, ips):
         if type(ips) is not list:
-            logging.debug("Banning %s for jail %s...", ips, jail)
+            logging.debug("%s %s for jail %s...", cmd_log, ips, jail)
             ips = [ips]
         else:
-            logging.debug("Banning %d ips for jail %s...", len(ips), jail)
-        response = self._send_command(["set", jail, "banip"] + ips)
+            logging.debug("%s %d ips for jail %s...", cmd_log, len(ips), jail)
+
+        for ip_batch in batched(ips, 10):
+            self._send_command(["set", jail, cmd] + ips)
+
+    def ban(self, jail, ips):
+        self._ips_cmd("banip", "Banning", jail, ips)
 
     def unban(self, jail, ips):
-        if type(ips) is not list:
-            logging.debug("Unbanning %s for jail %s...", ips, jail)
-            ips = [ips]
-        else:
-            logging.debug("Unbanning %d ips for jail %s...", len(ips), jail)
-        response = self._send_command(["set", jail, "unbanip"] + ips)
+        self._ips_cmd("unbanip", "Unbanning", jail, ips)
 
 
 if __name__ == "__main__":
