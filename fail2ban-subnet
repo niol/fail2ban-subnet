@@ -21,6 +21,7 @@
 import argparse
 import ipaddress
 import logging
+import sys
 
 
 from fail2ban.client.csocket import CSocket
@@ -181,7 +182,11 @@ if __name__ == "__main__":
     elif args.quiet:
         logging.getLogger().setLevel(logging.ERROR)
 
-    f2b = Fail2banClient("/var/run/fail2ban/fail2ban.sock")
+    try:
+        f2b = Fail2banClient("/var/run/fail2ban/fail2ban.sock")
+    except FileNotFoundError:
+        logging.error("Could not find to fail2ban server socket.")
+        sys.exit(1)
 
     for jail in f2b.get_jails():
         banned = f2b.get_banned(jail)
