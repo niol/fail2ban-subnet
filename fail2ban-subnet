@@ -62,6 +62,8 @@ def bad_networks(bad_treshold, ip_population):
         else:
             subnets[net] = [ip]
 
+    logging.debug("Those ips belong to %d sub-networks.", len(subnets.keys()))
+
     # cleanup subnets below population treshold
     for subnet in subnets.copy():
         try:
@@ -69,6 +71,8 @@ def bad_networks(bad_treshold, ip_population):
         except IndexError:
             # we have less ips than treshold
             del subnets[subnet]
+
+    logging.debug("In those sub-networks, %d have more than %d banned ips", len(subnets.keys()), bad_treshold)
 
     return subnets
 
@@ -194,11 +198,12 @@ if __name__ == "__main__":
     try:
         f2b = Fail2banClient("/var/run/fail2ban/fail2ban.sock")
     except FileNotFoundError:
-        logging.error("Could not find to fail2ban server socket.")
+        logging.error("Could not find fail2ban server socket.")
         sys.exit(1)
 
     for jail in f2b.get_jails():
         banned = f2b.get_banned(jail)
+        logging.debug("Found %d banned ips for jail %s", len(banned), jail)
         for badnet, ips in bad_networks(count_limit, banned).items():
             logging.info("Identified %s with %d bad ips", badnet, len(ips))
             if not args.dryrun:
