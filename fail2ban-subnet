@@ -24,7 +24,7 @@ import logging
 import sys
 
 
-from fail2ban.client.csocket import CSocket
+import fail2ban.client.csocket
 
 
 def bad_networks(bad_treshold, ip_population):
@@ -71,28 +71,22 @@ class Fail2banClient:
     """
 
     def __init__(self, socket: str) -> None:
-        """
-        Construct a new Fail2ban client.
-        """
+        self.client = fail2ban.client.csocket.CSocket(socket)
 
-        self.socket = socket
-
-    def _send_command(self, cmd: list[str], timeout: int = -1) -> list:
+    def _send_command(self, cmd: list[str]) -> list:
         """
         Send a command to the Fail2ban server, and wait for a response.
         """
 
-        client = CSocket(self.socket, timeout=timeout)
-
-        if timeout != -1:
-            client.settimeout(timeout)
-
-        ret = client.send(cmd)
+        ret = self.client.send(cmd)
 
         if ret[0] != 0:
             return
 
         return ret[1]
+
+    def close(self):
+        self.client.close()
 
     def get_jail_status(self, jail: str) -> dict:
         """
@@ -196,4 +190,5 @@ if __name__ == "__main__":
                 f2b.unban(jail, ips)
                 f2b.ban(jail, badnet)
 
+    f2b.close()
     logging.shutdown()
