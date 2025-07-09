@@ -25,6 +25,7 @@ import sys
 
 
 import fail2ban.client.csocket
+import systemd.journal
 
 
 def bad_networks(bad_treshold, ip_population):
@@ -169,12 +170,18 @@ if __name__ == "__main__":
 
     count_limit = args.count_limit
 
-    logging.basicConfig(format="%(message)s", level=logging.WARNING)
+    log = logging.getLogger()
 
     if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
-    elif args.quiet:
-        logging.getLogger().setLevel(logging.ERROR)
+        log_level = logging.DEBUG
+        log_handler = logging.StreamHandler(sys.stdout)
+        log_handler.setFormatter(logging.Formatter('%(levelname)s:%(message)s'))
+    else:
+        log_level = logging.INFO
+        log_handler = systemd.journal.JournalHandler(SYSLOG_IDENTIFIER='fail2ban-subnet')
+
+    log.setLevel(log_level)
+    log.addHandler(log_handler)
 
     try:
         f2b = Fail2banClient("/var/run/fail2ban/fail2ban.sock")
