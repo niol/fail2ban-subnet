@@ -38,7 +38,7 @@ def batched(iterable, chunk_size):
 
 def bad_networks(bad_treshold, ip_population):
     subnets = {}
-    
+
     # populate counts for each subnet
     for ip_str in ip_population:
         try:
@@ -56,7 +56,13 @@ def bad_networks(bad_treshold, ip_population):
         else:
             raise ValueError
 
-        net = Network((ip, netmask, ), strict=False)
+        net = Network(
+            (
+                ip,
+                netmask,
+            ),
+            strict=False,
+        )
         if net in subnets:
             subnets[net].append(ip)
         else:
@@ -72,7 +78,11 @@ def bad_networks(bad_treshold, ip_population):
             # we have less ips than treshold
             del subnets[subnet]
 
-    logging.debug("In those sub-networks, %d have more than %d banned ips", len(subnets.keys()), bad_treshold)
+    logging.debug(
+        "In those sub-networks, %d have more than %d banned ips",
+        len(subnets.keys()),
+        bad_treshold,
+    )
 
     return subnets
 
@@ -146,7 +156,7 @@ class Fail2banClient:
         return self.get_status()["Jail list"]
 
     def get_banned(self, jail: str) -> list:
-        return self.get_jail_status(jail)['Actions']['Banned IP list']
+        return self.get_jail_status(jail)["Actions"]["Banned IP list"]
 
     def _ips_cmd(self, cmd, cmd_log, jail, ips):
         if type(ips) is not list:
@@ -173,10 +183,12 @@ if __name__ == "__main__":
         epilog="Defaults: COUNTLIMIT={}".format(str(count_limit_default)),
     )
 
-    parser.add_argument("-v", "--verbose"   , action="store_true")
-    parser.add_argument("-q", "--quiet"     , action="store_true")
-    parser.add_argument("-D", "--dryrun"    , action="store_true")
-    parser.add_argument("-l", "--count-limit", action="store", type=int, default=count_limit_default)
+    parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("-q", "--quiet", action="store_true")
+    parser.add_argument("-D", "--dryrun", action="store_true")
+    parser.add_argument(
+        "-l", "--count-limit", action="store", type=int, default=count_limit_default
+    )
 
     args = parser.parse_args()
 
@@ -187,10 +199,12 @@ if __name__ == "__main__":
     if args.verbose:
         log_level = logging.DEBUG
         log_handler = logging.StreamHandler(sys.stdout)
-        log_handler.setFormatter(logging.Formatter('%(levelname)s:%(message)s'))
+        log_handler.setFormatter(logging.Formatter("%(levelname)s:%(message)s"))
     else:
         log_level = logging.INFO
-        log_handler = systemd.journal.JournalHandler(SYSLOG_IDENTIFIER='fail2ban-subnet')
+        log_handler = systemd.journal.JournalHandler(
+            SYSLOG_IDENTIFIER="fail2ban-subnet"
+        )
 
     log.setLevel(log_level)
     log.addHandler(log_handler)
