@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+
+include /usr/share/dpkg/pkg-info.mk
+
+
+tarball:
+		git archive HEAD -o ../fail2ban-subnet_$(DEB_VERSION_UPSTREAM).orig.tar.gz
+
+.PHONY: tarball
+
+%:
+	dh $@

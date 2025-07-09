@@ -1,0 +1,9 @@
+[Unit]
+Description=fail2ban block subnet / runjob triggered by timer
+
+# run only if main service is running
+BindsTo=fail2ban.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/fail2ban-subnet

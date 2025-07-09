@@ -1,0 +1,194 @@
+#!/usr/bin/python3
+#
+# Aggregate bans into subnet rules for fail2ban
+#
+# Copyright 2025 Alexandre Rossi <niol@zincube.net>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, see <https://www.gnu.org/licenses/>.
+
+
+import argparse
+import ipaddress
+import logging
+
+
+from fail2ban.client.csocket import CSocket
+
+
+def bad_networks(bad_treshold, ip_population):
+    subnets = {}
+    
+    # populate counts for each subnet
+    for ip_str in ip_population:
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError:
+            # already a banned subnet, ignore
+            continue
+
+        if ip.version == 4:
+            netmask = 24
+            Network = ipaddress.IPv4Network
+        elif ip.version == 6:
+            netmask = 48
+            Network = ipaddress.IPv6Network
+        else:
+            raise ValueError
+
+        net = Network((ip, netmask, ), strict=False)
+        if net in subnets:
+            subnets[net].append(ip)
+        else:
+            subnets[net] = [ip]
+
+    # cleanup subnets below population treshold
+    for subnet in subnets.copy():
+        try:
+            subnets[subnet][bad_treshold + 1]
+        except IndexError:
+            # we have less ips than treshold
+            del subnets[subnet]
+
+    return subnets
+
+
+class Fail2banClient:
+    """
+    Simple client for interacting with the Fail2ban client. Based on the
+    original source.
+    """
+
+    def __init__(self, socket: str) -> None:
+        """
+        Construct a new Fail2ban client.
+        """
+
+        self.socket = socket
+
+    def _send_command(self, cmd: list[str], timeout: int = -1) -> list:
+        """
+        Send a command to the Fail2ban server, and wait for a response.
+        """
+
+        client = CSocket(self.socket, timeout=timeout)
+
+        if timeout != -1:
+            client.settimeout(timeout)
+
+        ret = client.send(cmd)
+
+        if ret[0] != 0:
+            return
+
+        return ret[1]
+
+    def get_jail_status(self, jail: str) -> dict:
+        """
+        Return the status of a specific jail.
+        """
+
+        response = self._send_command(["status", jail])
+
+        if not response:
+            return []
+
+        # Restructure the response.
+        response = {k: v for k, v in response}
+
+        if "Actions" in response:
+            response["Actions"] = {k: v for k, v in response["Actions"]}
+
+        if "Filter" in response:
+            response["Filter"] = {k: v for k, v in response["Filter"]}
+
+        return response
+
+    def get_status(self) -> list[dict]:
+        """
+        Return the status information.
+        """
+
+        response = self._send_command(["status"])
+
+        if not response:
+            return []
+
+        # Restructure the response.
+        response = {k: v for k, v in response}
+
+        if "Jail list" in response:
+            response["Jail list"] = [
+                j.strip() for j in response["Jail list"].split(",")
+            ]
+
+        return response
+
+    def get_jails(self) -> list:
+        return self.get_status()["Jail list"]
+
+    def get_banned(self, jail: str) -> list:
+        return self.get_jail_status(jail)['Actions']['Banned IP list']
+
+    def ban(self, jail, ips):
+        if type(ips) is not list:
+            logging.debug("Banning %s for jail %s...", ips, jail)
+            ips = [ips]
+        else:
+            logging.debug("Banning %d ips for jail %s...", len(ips), jail)
+        response = self._send_command(["set", jail, "banip"] + ips)
+
+    def unban(self, jail, ips):
+        if type(ips) is not list:
+            logging.debug("Unbanning %s for jail %s...", ips, jail)
+            ips = [ips]
+        else:
+            logging.debug("Unbanning %d ips for jail %s...", len(ips), jail)
+        response = self._send_command(["set", jail, "unbanip"] + ips)
+
+
+if __name__ == "__main__":
+    count_limit_default = 7
+
+    parser = argparse.ArgumentParser(
+        description="Scan fail2ban bans and aggregate single banned IP addresses into banned networks",
+        epilog="Defaults: COUNTLIMIT={}".format(str(count_limit_default)),
+    )
+
+    parser.add_argument("-v", "--verbose"   , action="store_true")
+    parser.add_argument("-q", "--quiet"     , action="store_true")
+    parser.add_argument("-D", "--dryrun"    , action="store_true")
+    parser.add_argument("-l", "--count-limit", action="store", type=int, default=count_limit_default)
+
+    args = parser.parse_args()
+
+    count_limit = args.count_limit
+
+    logging.basicConfig(format="%(message)s", level=logging.WARNING)
+
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    elif args.quiet:
+        logging.getLogger().setLevel(logging.ERROR)
+
+    f2b = Fail2banClient("/var/run/fail2ban/fail2ban.sock")
+
+    for jail in f2b.get_jails():
+        banned = f2b.get_banned(jail)
+        for badnet, ips in bad_networks(count_limit, banned).items():
+            logging.info("Identified %s with %d bad ips", badnet, len(ips))
+            if not args.dryrun:
+                f2b.unban(jail, ips)
+                f2b.ban(jail, badnet)
+
+    logging.shutdown()

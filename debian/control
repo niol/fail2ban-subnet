@@ -1,0 +1,20 @@
+Source: fail2ban-subnet
+Section: admin
+Priority: optional
+Maintainer: Alexandre Rossi <niol@zincube.net>
+Build-Depends: debhelper-compat (= 13),
+    python3,
+Standards-Version: 4.7.2
+Rules-Requires-Root: no
+Homepage: https://sml.zincube.net/~niol/repositories.git/fail2ban-subnet/about/
+Vcs-Git: https://sml.zincube.net/~niol/repositories.git/fail2ban-subnet/
+Vcs-Browser: https://sml.zincube.net/~niol/repositories.git/fail2ban-subnet/
+
+Package: fail2ban-subnet
+Architecture: all
+Depends: ${misc:Depends},
+    python3,
+    fail2ban,
+Description: Regularly look to extend fail2bans to subnets
+ A script that group IPs into network range, to block attacks from a
+ network subnet, to prevent huge rule lists.

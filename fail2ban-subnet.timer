@@ -1,0 +1,15 @@
+[Unit]
+Description=fail2ban block subnet / run regurlarly fail2ban-subnet
+
+# run only if main service is running
+PartOf=fail2ban.service
+After=fail2ban.service
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+RandomizedDelaySec=3600
+Persistent=true
+
+[Install]
+WantedBy=timers.target fail2ban.service

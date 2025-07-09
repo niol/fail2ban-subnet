@@ -1,0 +1,3 @@
+fail2ban-subnet usr/sbin
+fail2ban-subnet.service usr/lib/systemd/system
+fail2ban-subnet.timer usr/lib/systemd/system
