@@ -22,11 +22,11 @@ import argparse
 import ipaddress
 import itertools
 import logging
+import os
 import sys
 
 
 import fail2ban.client.csocket
-import systemd.journal
 
 
 # FIXME: remove when python 3.12 is more common
@@ -196,15 +196,22 @@ if __name__ == "__main__":
 
     log = logging.getLogger()
 
-    if args.verbose:
-        log_level = logging.DEBUG
-        log_handler = logging.StreamHandler(sys.stdout)
-        log_handler.setFormatter(logging.Formatter("%(levelname)s:%(message)s"))
-    else:
-        log_level = logging.INFO
+    if os.getenv("INVOCATION_ID"):  # running as systemd unit
+        import systemd.journal
+
         log_handler = systemd.journal.JournalHandler(
             SYSLOG_IDENTIFIER="fail2ban-subnet"
         )
+    else:
+        log_handler = logging.StreamHandler(sys.stdout)
+        log_handler.setFormatter(logging.Formatter("%(levelname)s:%(message)s"))
+
+    if args.verbose:
+        log_level = logging.DEBUG
+    elif args.quiet:
+        log_level = logging.ERROR
+    else:
+        log_level = logging.INFO
 
     log.setLevel(log_level)
     log.addHandler(log_handler)
