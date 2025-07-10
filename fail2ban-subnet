@@ -68,7 +68,7 @@ def bad_networks(bad_treshold, ip_population):
         else:
             subnets[net] = [ip]
 
-    logging.debug("Those ips belong to %d sub-networks.", len(subnets.keys()))
+    logging.debug("  Those ips belong to %d sub-networks.", len(subnets.keys()))
 
     # cleanup subnets below population treshold
     for subnet in subnets.copy():
@@ -79,7 +79,7 @@ def bad_networks(bad_treshold, ip_population):
             del subnets[subnet]
 
     logging.debug(
-        "In those sub-networks, %d have more than %d banned ips",
+        "  In those sub-networks, %d have more than %d banned ips",
         len(subnets.keys()),
         bad_treshold,
     )
@@ -160,10 +160,10 @@ class Fail2banClient:
 
     def _ips_cmd(self, cmd, cmd_log, jail, ips):
         if type(ips) is not list:
-            logging.debug("%s %s for jail %s...", cmd_log, ips, jail)
+            logging.debug("jail [%s] %s %s...", jail, cmd_log, ips)
             ips = [ips]
         else:
-            logging.debug("%s %d ips for jail %s...", cmd_log, len(ips), jail)
+            logging.debug("jail [%s] %s %d ips...", jail, cmd_log, len(ips))
 
         for ip_batch in batched(ips, 10):
             self._send_command(["set", jail, cmd] + ips)
@@ -217,9 +217,11 @@ if __name__ == "__main__":
 
     for jail in f2b.get_jails():
         banned = f2b.get_banned(jail)
-        logging.debug("Found %d banned ips for jail %s", len(banned), jail)
+        logging.debug("jail [%s] Found %d banned ips", jail, len(banned))
         for badnet, ips in bad_networks(count_limit, banned).items():
-            logging.info("Identified %s with %d bad ips", badnet, len(ips))
+            logging.info(
+                "jail [%s] Identified %s with %d bad ips", jail, badnet, len(ips)
+            )
             if not args.dryrun:
                 f2b.unban(jail, ips)
                 f2b.ban(jail, badnet)
