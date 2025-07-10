@@ -1,3 +1,19 @@
+fail2ban-subnet (0.2-1) unstable; urgency=medium
+
+  * handle socket path not found error
+  * do not open a new connection to fail2ban server for each command
+  * support logging to journald
+  * send ips to fail2ban in chunks to avoid blocking other requests with huge ip sets
+  * more debug logging
+  * lint python
+  * rather run about once every hour
+  * improve doc with nftables related doc and example run log
+  * common notation for jail in log messages
+  * independant setting of log level and invocation context
+  * add d/watch
+
+ -- Alexandre Rossi <niol@zincube.net>  Thu, 10 Jul 2025 11:45:21 +0200
+
 fail2ban-subnet (0.1-1) unstable; urgency=medium
 
   * Initial release.
