@@ -23,7 +23,7 @@ banned.
 this could be configurable, or growing to larger masks in case
 of bad adjacent networks.
 - if using `nftables`, `auto-merge` may lead to failures to unban
-when ban time is elpased.
+when ban time is elapsed.
 
 ## Requirements
 
