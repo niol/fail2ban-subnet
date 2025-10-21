@@ -187,7 +187,10 @@ def ban_subnets(args):
             logging.info(
                 "jail [%s] Identified %s with %d bad ips", jail, badnet, len(ips)
             )
-            if not args.dryrun:
+            if args.dryrun:
+                for ip in ips:
+                    logging.debug(f"\t{ip}")
+            else:
                 f2b.unban(jail, ips)
                 f2b.ban(jail, badnet)
 
