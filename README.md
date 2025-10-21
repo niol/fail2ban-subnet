@@ -28,7 +28,7 @@ when ban time is elapsed.
 ## Requirements
 
 - python3
-- python3-systemd
+- python3-systemd (optional)
 
 ## Requirements if using nftables
 
@@ -45,7 +45,7 @@ into
 _nft_add_set = <nftables> add set <table_family> <table> <addr_set> \{ type <addr_type>\; flags interval\; auto-merge\; \}
 ```
 
-See [nftables.conf - add support for cidr notation #3291](https://github.com/fail2ban/fail2ban/pull/3291).
+See [nftables.conf - add support for cidr notation #3291](https://github.com/fail2ban/fail2ban/pull/3291). This should be in fail2ban >= 1.1.1 .
 
 ## Example run
 
