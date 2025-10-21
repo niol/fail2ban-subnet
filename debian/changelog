@@ -1,3 +1,12 @@
+fail2ban-subnet (0.3-1) unstable; urgency=medium
+
+  * new --input-file arg
+  * fix off-by-one bad treshold
+  * more debug when dry_run with detailed ip list
+  * grow identified bad networks to include adjacent bad networks
+
+ -- Alexandre Rossi <niol@zincube.net>  Tue, 21 Oct 2025 11:43:48 +0200
+
 fail2ban-subnet (0.2-1) unstable; urgency=medium
 
   * handle socket path not found error
