@@ -175,6 +175,38 @@ class Fail2banClient:
         self._ips_cmd("unbanip", "Unbanning", jail, ips)
 
 
+def ban_subnets(args):
+    try:
+        f2b = Fail2banClient("/var/run/fail2ban/fail2ban.sock")
+    except FileNotFoundError:
+        logging.error("Could not find fail2ban server socket.")
+        sys.exit(1)
+
+    for jail in f2b.get_jails():
+        banned = f2b.get_banned(jail)
+        logging.debug("jail [%s] Found %d banned ips", jail, len(banned))
+        for badnet, ips in bad_networks(args.count_limit, banned).items():
+            logging.info(
+                "jail [%s] Identified %s with %d bad ips", jail, badnet, len(ips)
+            )
+            if not args.dryrun:
+                f2b.unban(jail, ips)
+                f2b.ban(jail, badnet)
+
+    f2b.close()
+
+
+def print_subnets(args):
+    banned = None
+    with open(args.input_file) as f:
+        banned = [l.strip() for l in f]
+
+    for badnet, ips in bad_networks(args.count_limit, banned).items():
+        logging.debug(f"Network {badnet}:")
+        for ip in ips:
+            logging.debug(f"\t{ip}")
+
+
 if __name__ == "__main__":
     count_limit_default = 7
 
@@ -189,10 +221,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "-l", "--count-limit", action="store", type=int, default=count_limit_default
     )
+    parser.add_argument(
+        "-f",
+        "--input-file",
+        action="store",
+        help="Take this plain text file as list of input IPs instead of asking f2b (for testing purposes). Implies --dryrun",
+    )
 
     args = parser.parse_args()
-
-    count_limit = args.count_limit
 
     log = logging.getLogger()
 
@@ -216,22 +252,10 @@ if __name__ == "__main__":
     log.setLevel(log_level)
     log.addHandler(log_handler)
 
-    try:
-        f2b = Fail2banClient("/var/run/fail2ban/fail2ban.sock")
-    except FileNotFoundError:
-        logging.error("Could not find fail2ban server socket.")
-        sys.exit(1)
+    if args.input_file:
+        args.dryrun = True
+        print_subnets(args)
+    else:
+        ban_subnets(args)
 
-    for jail in f2b.get_jails():
-        banned = f2b.get_banned(jail)
-        logging.debug("jail [%s] Found %d banned ips", jail, len(banned))
-        for badnet, ips in bad_networks(count_limit, banned).items():
-            logging.info(
-                "jail [%s] Identified %s with %d bad ips", jail, badnet, len(ips)
-            )
-            if not args.dryrun:
-                f2b.unban(jail, ips)
-                f2b.ban(jail, badnet)
-
-    f2b.close()
     logging.shutdown()
