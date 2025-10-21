@@ -241,7 +241,7 @@ class Fail2banClient:
     def get_banned(self, jail: str) -> list:
         return self.get_jail_status(jail)["Actions"]["Banned IP list"]
 
-    def _ips_cmd(self, cmd, cmd_log, jail, ips):
+    def _ips_cmd(self, cmd, cmd_log, jail: str, ips):
         if type(ips) is not list:
             logging.debug("jail [%s] %s %s...", jail, cmd_log, ips)
             ips = [ips]
@@ -251,10 +251,10 @@ class Fail2banClient:
         for ip_batch in batched(ips, 10):
             self._send_command(["set", jail, cmd] + ips)
 
-    def ban(self, jail, ips):
+    def ban(self, jail: str, ips: list[str]):
         self._ips_cmd("banip", "Banning", jail, ips)
 
-    def unban(self, jail, ips):
+    def unban(self, jail: str, ips: list[str]):
         self._ips_cmd("unbanip", "Unbanning", jail, ips)
 
 
@@ -276,7 +276,7 @@ def ban_subnets(args):
                 for ip in ips:
                     logging.debug(f"\t{ip}")
             else:
-                f2b.unban(jail, ips)
+                f2b.unban(jail, list(map(str, ips)))
                 f2b.ban(jail, badnet)
 
     f2b.close()
