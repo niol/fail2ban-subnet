@@ -5,11 +5,14 @@ from a network range address, inspired by
 [fail2ban-block-ip-range](https://github.com/WKnak/fail2ban-block-ip-range).
 
 The script regularly scans list of banned ip by querying the fail2ban
-server process, and tries to identify bad networks, that is networks
-that have more than _treshold_ banned ips. When such networks are identified:
+server process, and tries to identify bad networks (`/24` for `ipv4`
+and `/64` for `ipv6`), that is networks that have more than _treshold_
+banned ips. When such networks are identified:
 
-1. ips in this network are unbanned
-2. the network is banned
+1. An algorithm tries to grow the subnetwork to adjacent above-treshold
+   subnetworks up to some limit (`/16` for `ipv4` and `/48` for `ipv6`)
+2. ips in this network are unbanned
+3. the network is banned
 
 As all those commands go through the fail2ban ban manager, configured
 increments on recidive are enforced.
@@ -19,9 +22,6 @@ Current limitations:
 - unbanning can be slow with large ip sets, which opens a window for
 bad ips to access the protected service, before the whole bad network is
 banned.
-- currently, the script bans `/24` for `ipv4` and `/48` for `ipv6`,
-this could be configurable, or growing to larger masks in case
-of bad adjacent networks.
 - if using `nftables`, `auto-merge` may lead to failures to unban
 when ban time is elapsed.
 
