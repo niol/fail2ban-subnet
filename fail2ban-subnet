@@ -72,9 +72,7 @@ def bad_networks(bad_treshold, ip_population):
 
     # cleanup subnets below population treshold
     for subnet in subnets.copy():
-        try:
-            subnets[subnet][bad_treshold + 1]
-        except IndexError:
+        if len(subnets[subnet]) < bad_treshold:
             # we have less ips than treshold
             del subnets[subnet]
 
