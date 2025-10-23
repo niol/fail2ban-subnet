@@ -95,8 +95,15 @@ def subnets_important(bad_treshold, ip_population):
 
     # cleanup subnets below population treshold
     for subnet in subnets.copy():
-        if len(subnets[subnet]) < bad_treshold:
-            # we have less ips than treshold
+        # important if
+        #    we have more ips than treshold
+        # or
+        #    already a subnet
+        important = len(subnets[subnet]) >= bad_treshold or hasattr(
+            next(iter(subnets[subnet])), "prefixlen"
+        )
+
+        if not important:
             del subnets[subnet]
 
     return subnets
@@ -184,6 +191,7 @@ class Fail2banClient:
 
     def __init__(self, socket: str) -> None:
         import fail2ban.client.csocket
+
         self.client = fail2ban.client.csocket.CSocket(socket)
 
     def _send_command(self, cmd: list[str]) -> list:
