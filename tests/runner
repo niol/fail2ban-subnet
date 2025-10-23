@@ -1,0 +1,278 @@
+#!/usr/bin/python3
+#
+# Aggregate bans into subnet rules for fail2ban - unit tests
+#
+# Copyright 2025 Alexandre Rossi <niol@zincube.net>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, see <https://www.gnu.org/licenses/>.
+
+
+import importlib.machinery
+import importlib.util
+import ipaddress
+import os
+import sys
+import unittest
+
+
+TESTS_DIR = os.path.dirname(__file__)
+spec = importlib.util.spec_from_loader(
+    "f2bsubnet",
+    importlib.machinery.SourceFileLoader(
+        "f2bsubnet", os.path.join(TESTS_DIR, "..", "fail2ban-subnet")
+    ),
+)
+f2bsubnet = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = f2bsubnet
+spec.loader.exec_module(f2bsubnet)
+
+
+class F2bSubnetTests(unittest.TestCase):
+
+    def load_ips(self, fn):
+        ips = None
+        with open(os.path.join(TESTS_DIR, fn)) as f:
+            ips = [l.strip() for l in f]
+        return ips
+
+    def test_subnets_important(self):
+        ips = [
+            "192.168.238.100",
+            "192.168.12.4",
+            "192.168.13.234",
+            "192.168.67.29",
+            "192.168.12.64",
+            "192.168.13.12",
+            "192.168.238.124",
+            "192.168.67.31",
+            "192.168.12.28",
+            "192.168.238.144",
+            "192.168.238.1",
+        ]
+
+        self.assertCountEqual(
+            f2bsubnet.subnets_important(3, ips).keys(),
+            {
+                ipaddress.IPv4Network("192.168.12.0/24"),
+                ipaddress.IPv4Network("192.168.238.0/24"),
+            },
+        )
+
+    def test_subnets_clustering_overidentify(self):
+        self.assertCountEqual(
+            f2bsubnet.subnets_cluster(
+                [
+                    ipaddress.IPv4Network("8.210.16.0/24"),
+                    ipaddress.IPv4Network("8.210.176.0/22"),
+                    ipaddress.IPv4Network("8.210.186.0/24"),
+                ],
+                f2bsubnet.V4_SEARCH_NETMASKS,
+            ),
+            {
+                ipaddress.IPv4Network("8.210.16.0/24"),
+                ipaddress.IPv4Network("8.210.176.0/20"),
+            },
+        )
+
+    def test_subnets_clustering_firstlast(self):
+        self.assertCountEqual(
+            f2bsubnet.subnets_find_clusters(
+                {
+                    s: 0
+                    for s in [
+                        ipaddress.IPv4Network("1.2.3.0/24"),
+                        ipaddress.IPv4Network("8.210.176.0/24"),
+                        ipaddress.IPv4Network("8.210.178.0/24"),
+                        ipaddress.IPv4Network("8.210.179.0/24"),
+                        ipaddress.IPv4Network("8.210.186.0/24"),
+                        ipaddress.IPv4Network("123.95.4.0/24"),
+                    ]
+                },
+                22,
+            ),
+            {
+                ipaddress.IPv4Network("1.2.3.0/24"),
+                ipaddress.IPv4Network("8.210.176.0/22"),
+                ipaddress.IPv4Network("8.210.186.0/24"),
+                ipaddress.IPv4Network("123.95.4.0/24"),
+            },
+        )
+
+    def test_subnets_clustering_smallexample(self):
+        ips = [ip for ip in self.load_ips("ai-bots") if ip.startswith("8.210.")]
+        subnets_defs = f2bsubnet.subnets_important(4, ips)
+        subnets = list(subnets_defs.keys())
+        self.assertCountEqual(
+            subnets,
+            {
+                ipaddress.IPv4Network("8.210.176.0/24"),
+                ipaddress.IPv4Network("8.210.178.0/24"),
+                ipaddress.IPv4Network("8.210.179.0/24"),
+                ipaddress.IPv4Network("8.210.186.0/24"),
+            },
+        )
+
+        self.assertCountEqual(
+            f2bsubnet.subnets_find_clusters({s: 0 for s in subnets}, 22),
+            {
+                ipaddress.IPv4Network("8.210.176.0/22"),
+                ipaddress.IPv4Network("8.210.186.0/24"),
+            },
+        )
+
+        self.assertCountEqual(
+            f2bsubnet.subnets_find_clusters({s: 0 for s in subnets}, 20),
+            {
+                ipaddress.IPv4Network("8.210.176.0/20"),
+            },
+        )
+
+        self.assertCountEqual(
+            f2bsubnet.subnets_cluster(
+                subnets,
+                f2bsubnet.V4_SEARCH_NETMASKS,
+            ),
+            {
+                ipaddress.IPv4Network("8.210.176.0/20"),
+            },
+        )
+
+    def test_subnets_clustering_biglist(self):
+        ips = self.load_ips("ai-bots")
+
+        self.maxDiff = None
+        subnets = f2bsubnet.subnets_important(4, ips)
+        self.assertCountEqual(
+            subnets.keys(),
+            {
+                ipaddress.IPv4Network("8.210.176.0/24"),
+                ipaddress.IPv4Network("8.210.178.0/24"),
+                ipaddress.IPv4Network("8.210.179.0/24"),
+                ipaddress.IPv4Network("8.210.186.0/24"),
+                ipaddress.IPv4Network("27.115.124.0/24"),
+                ipaddress.IPv4Network("40.77.167.0/24"),
+                ipaddress.IPv4Network("45.177.154.0/24"),
+                ipaddress.IPv4Network("45.228.136.0/24"),
+                ipaddress.IPv4Network("45.230.9.0/24"),
+                ipaddress.IPv4Network("45.230.165.0/24"),
+                ipaddress.IPv4Network("47.242.20.0/24"),
+                ipaddress.IPv4Network("47.242.45.0/24"),
+                ipaddress.IPv4Network("47.242.53.0/24"),
+                ipaddress.IPv4Network("47.242.55.0/24"),
+                ipaddress.IPv4Network("47.242.57.0/24"),
+                ipaddress.IPv4Network("47.242.58.0/24"),
+                ipaddress.IPv4Network("47.242.61.0/24"),
+                ipaddress.IPv4Network("47.242.62.0/24"),
+                ipaddress.IPv4Network("47.242.64.0/24"),
+                ipaddress.IPv4Network("47.242.78.0/24"),
+                ipaddress.IPv4Network("47.242.86.0/24"),
+                ipaddress.IPv4Network("47.242.128.0/24"),
+                ipaddress.IPv4Network("47.242.129.0/24"),
+                ipaddress.IPv4Network("47.242.131.0/24"),
+                ipaddress.IPv4Network("47.242.133.0/24"),
+                ipaddress.IPv4Network("47.242.135.0/24"),
+                ipaddress.IPv4Network("47.242.139.0/24"),
+                ipaddress.IPv4Network("47.242.140.0/24"),
+                ipaddress.IPv4Network("47.242.161.0/24"),
+                ipaddress.IPv4Network("47.242.208.0/24"),
+                ipaddress.IPv4Network("47.242.210.0/24"),
+                ipaddress.IPv4Network("47.242.211.0/24"),
+                ipaddress.IPv4Network("47.242.214.0/24"),
+                ipaddress.IPv4Network("47.242.222.0/24"),
+                ipaddress.IPv4Network("47.242.229.0/24"),
+                ipaddress.IPv4Network("47.242.248.0/24"),
+                ipaddress.IPv4Network("47.243.11.0/24"),
+                ipaddress.IPv4Network("47.243.29.0/24"),
+                ipaddress.IPv4Network("47.243.50.0/24"),
+                ipaddress.IPv4Network("47.243.70.0/24"),
+                ipaddress.IPv4Network("47.243.78.0/24"),
+                ipaddress.IPv4Network("47.243.105.0/24"),
+                ipaddress.IPv4Network("47.243.195.0/24"),
+                ipaddress.IPv4Network("47.243.200.0/24"),
+                ipaddress.IPv4Network("47.243.207.0/24"),
+                ipaddress.IPv4Network("47.243.251.0/24"),
+                ipaddress.IPv4Network("101.91.110.0/24"),
+                ipaddress.IPv4Network("101.199.254.0/24"),
+                ipaddress.IPv4Network("104.210.140.0/24"),
+                ipaddress.IPv4Network("138.59.226.0/24"),
+                ipaddress.IPv4Network("138.117.221.0/24"),
+                ipaddress.IPv4Network("143.0.56.0/24"),
+                ipaddress.IPv4Network("148.222.194.0/24"),
+                ipaddress.IPv4Network("167.249.242.0/24"),
+                ipaddress.IPv4Network("170.78.118.0/24"),
+                ipaddress.IPv4Network("170.82.50.0/24"),
+                ipaddress.IPv4Network("170.245.133.0/24"),
+                ipaddress.IPv4Network("170.246.69.0/24"),
+                ipaddress.IPv4Network("170.247.38.0/24"),
+                ipaddress.IPv4Network("177.37.180.0/24"),
+                ipaddress.IPv4Network("177.87.32.0/24"),
+                ipaddress.IPv4Network("177.181.4.0/24"),
+                ipaddress.IPv4Network("177.220.172.0/24"),
+                ipaddress.IPv4Network("181.91.84.0/24"),
+                ipaddress.IPv4Network("181.199.54.0/24"),
+                ipaddress.IPv4Network("186.158.200.0/24"),
+                ipaddress.IPv4Network("187.16.187.0/24"),
+                ipaddress.IPv4Network("187.180.212.0/24"),
+                ipaddress.IPv4Network("189.126.47.0/24"),
+                ipaddress.IPv4Network("190.102.47.0/24"),
+                ipaddress.IPv4Network("191.243.89.0/24"),
+                ipaddress.IPv4Network("216.98.214.0/24"),
+            },
+        )
+
+        clustered = f2bsubnet.bad_networks(4, ips)
+        self.assertCountEqual(
+            clustered.keys(),
+            {
+                ipaddress.IPv4Network("8.210.176.0/20"),
+                ipaddress.IPv4Network("27.115.124.0/24"),
+                ipaddress.IPv4Network("40.77.167.0/24"),
+                ipaddress.IPv4Network("45.177.154.0/24"),
+                ipaddress.IPv4Network("45.228.136.0/24"),
+                ipaddress.IPv4Network("45.230.9.0/24"),
+                ipaddress.IPv4Network("45.230.165.0/24"),
+                ipaddress.IPv4Network("47.242.0.0/16"),
+                ipaddress.IPv4Network("47.243.0.0/16"),
+                ipaddress.IPv4Network("101.91.110.0/24"),
+                ipaddress.IPv4Network("101.199.254.0/24"),
+                ipaddress.IPv4Network("104.210.140.0/24"),
+                ipaddress.IPv4Network("138.59.226.0/24"),
+                ipaddress.IPv4Network("138.117.221.0/24"),
+                ipaddress.IPv4Network("143.0.56.0/24"),
+                ipaddress.IPv4Network("148.222.194.0/24"),
+                ipaddress.IPv4Network("167.249.242.0/24"),
+                ipaddress.IPv4Network("170.78.118.0/24"),
+                ipaddress.IPv4Network("170.82.50.0/24"),
+                ipaddress.IPv4Network("170.245.133.0/24"),
+                ipaddress.IPv4Network("170.246.69.0/24"),
+                ipaddress.IPv4Network("170.247.38.0/24"),
+                ipaddress.IPv4Network("177.37.180.0/24"),
+                ipaddress.IPv4Network("177.87.32.0/24"),
+                ipaddress.IPv4Network("177.181.4.0/24"),
+                ipaddress.IPv4Network("177.220.172.0/24"),
+                ipaddress.IPv4Network("181.91.84.0/24"),
+                ipaddress.IPv4Network("181.199.54.0/24"),
+                ipaddress.IPv4Network("186.158.200.0/24"),
+                ipaddress.IPv4Network("187.16.187.0/24"),
+                ipaddress.IPv4Network("187.180.212.0/24"),
+                ipaddress.IPv4Network("189.126.47.0/24"),
+                ipaddress.IPv4Network("190.102.47.0/24"),
+                ipaddress.IPv4Network("191.243.89.0/24"),
+                ipaddress.IPv4Network("216.98.214.0/24"),
+            },
+        )
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

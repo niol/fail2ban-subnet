@@ -28,9 +28,6 @@ import sys
 import typing
 
 
-import fail2ban.client.csocket
-
-
 class V4_NETMASKS(typing.NamedTuple):
     smallest = 24
     biggest = 16
@@ -41,6 +38,14 @@ class V6_NETMASKS(typing.NamedTuple):
     smallest = 64
     biggest = 48
     search_step = 8
+
+
+V4_SEARCH_NETMASKS = range(
+    V4_NETMASKS.smallest, V4_NETMASKS.biggest - 1, -V4_NETMASKS.search_step
+)
+V6_SEARCH_NETMASKS = range(
+    V6_NETMASKS.smallest, V6_NETMASKS.biggest - 1, -V6_NETMASKS.search_step
+)
 
 
 # FIXME: remove when python 3.12 is more common
@@ -69,57 +74,10 @@ def smallest_net_from(ip):
     )
 
 
-def cluster_networks(subnets, search_netmasks):
-    bad_subnets_clusters = subnets.copy()
-    could_not_expand_count = {}
-    for netmask in search_netmasks:
-        bad_subnets = list(bad_subnets_clusters.keys())
-        bad_subnets.sort()
-        bad_subnets_last_idx = len(bad_subnets) - 1
-        for idx in range(0, bad_subnets_last_idx):
-            subnet = bad_subnets[idx]
-            if subnet in could_not_expand_count and could_not_expand_count[subnet] > 4:
-                # could not previously expand to adjacent subnets, stop here to
-                # avoid big supernets with few bad ips
-                continue
-            wider_net = subnet.supernet(new_prefix=netmask)
-            before = range(idx - 1, 0, -1)
-            after = range(idx + 1, bad_subnets_last_idx)
-            could_expand = False
-            for search in (before, after):
-                for idx_search in search:
-                    candidate = bad_subnets[idx_search]
-                    if candidate not in bad_subnets_clusters:
-                        # candidate already consolidated into another supernet
-                        continue
-                    if candidate.subnet_of(wider_net):
-                        could_expand = True
-                        if wider_net in bad_subnets_clusters:
-                            bad_subnets_clusters[wider_net].update(
-                                bad_subnets_clusters[candidate]
-                            )
-                        else:
-                            bad_subnets_clusters[wider_net] = bad_subnets_clusters[
-                                candidate
-                            ]
-                        del bad_subnets_clusters[candidate]
-                    else:
-                        break
-                if not could_expand:
-                    if subnet in could_not_expand_count:
-                        could_not_expand_count[subnet] = (
-                            could_not_expand_count[subnet] + 1
-                        )
-                    else:
-                        could_not_expand_count[subnet] = 1
+def subnets_important(bad_treshold, ip_population):
+    subnets = {}
 
-    return bad_subnets_clusters
-
-
-def bad_networks(bad_treshold, ip_population):
-    subnets = collections.OrderedDict()
-
-    # populate counts for each smallest subnet
+    # populate ips for each smallest subnet
     for ip_str in ip_population:
         try:
             ip = ipaddress.ip_address(ip_str)
@@ -135,39 +93,87 @@ def bad_networks(bad_treshold, ip_population):
         else:
             subnets[net] = {ip}
 
-    logging.debug(
-        "  Those ips belong to %d smallest sub-networks.", len(subnets.keys())
-    )
-
     # cleanup subnets below population treshold
     for subnet in subnets.copy():
         if len(subnets[subnet]) < bad_treshold:
             # we have less ips than treshold
             del subnets[subnet]
 
+    return subnets
+
+
+def subnets_find_clusters(subnets_cluster_counts, prefixlen):
+    subnets = list(subnets_cluster_counts.keys())
+    clustering_subnets = collections.OrderedDict()
+
+    for idx in range(0, len(subnets)):
+        subnet = subnets[idx]
+
+        if prefixlen < subnet.prefixlen:
+            wider_net = subnet.supernet(new_prefix=prefixlen)
+        else:
+            # already a bigger subnet, keep
+            clustering_subnets[subnet] = 0
+            continue
+
+        last_count = subnets_cluster_counts[subnet]
+        if last_count > 2:
+            # we did not find neighbors last times, keep and stop trying to expand
+            clustering_subnets[subnet] = last_count + 1
+            continue
+
+        no_candidate = True
+        for candidate in subnets[idx + 1 :]:
+            if candidate.subnet_of(wider_net):
+                no_candidate = False
+                clustering_subnets[wider_net] = 0
+            else:
+                break
+
+        if no_candidate:
+            # handle the case of the last subnet being in the last cluster
+            if wider_net not in clustering_subnets:
+                clustering_subnets[subnet] = subnets_cluster_counts[subnet] + 1
+
+    return clustering_subnets
+
+
+def subnets_cluster(subnets, search_netmasks):
+    clusters = {s: 0 for s in subnets}
+    for netmask in search_netmasks:
+        clusters = subnets_find_clusters(clusters, netmask)
+    return clusters
+
+
+def bad_networks(bad_treshold, ip_population):
+    subnets = subnets_important(bad_treshold, ip_population)
+
     logging.debug(
-        "  In those sub-networks, %d have more than %d banned ips",
+        "  %d subnets have more than %d banned ips",
         len(subnets.keys()),
         bad_treshold,
     )
 
     # cluster adjacent above treshold subnets
-    v4subnets = {s: subnets[s] for s in subnets if s.version == 4}
-    bad_networks = cluster_networks(
-        v4subnets,
-        range(V4_NETMASKS.smallest, V4_NETMASKS.biggest - 1, -V4_NETMASKS.search_step),
-    )
-    v6subnets = {s: subnets[s] for s in subnets if s.version == 6}
-    bad_networks.update(
-        cluster_networks(
-            v6subnets,
-            range(
-                V6_NETMASKS.smallest, V6_NETMASKS.biggest - 1, -V6_NETMASKS.search_step
-            ),
-        )
-    )
+    v4subnets = [s for s in subnets if s.version == 4]
+    v4bad_networks = subnets_cluster(v4subnets, V4_SEARCH_NETMASKS)
+    v6subnets = [s for s in subnets if s.version == 6]
+    v6bad_networks = subnets_cluster(v6subnets, V6_SEARCH_NETMASKS)
 
-    return bad_networks
+    # group ip population into identified clustered subnets
+    bad_networks = list(v4bad_networks.keys()) + list(v6bad_networks.keys())
+    bad_networks_defs = {s: set() for s in bad_networks}
+    for subnet, ips in subnets.items():
+        if subnet in bad_networks_defs:
+            bad_networks_defs[subnet].update(ips)
+        else:
+            # search if subnet was clustered into a wider one
+            for s in bad_networks_defs:
+                if subnet.subnet_of(s):
+                    bad_networks_defs[s].update(ips)
+                    break
+
+    return bad_networks_defs
 
 
 class Fail2banClient:
@@ -177,6 +183,7 @@ class Fail2banClient:
     """
 
     def __init__(self, socket: str) -> None:
+        import fail2ban.client.csocket
         self.client = fail2ban.client.csocket.CSocket(socket)
 
     def _send_command(self, cmd: list[str]) -> list:
