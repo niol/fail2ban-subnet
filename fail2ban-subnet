@@ -284,6 +284,9 @@ def ban_subnets(args):
         banned = f2b.get_banned(jail)
         logging.debug("jail [%s] Found %d banned ips", jail, len(banned))
         for badnet, ips in bad_networks(args.count_limit, banned).items():
+            if badnet in ips:
+                logging.debug(f"jail [{jail}] {badnet} was already banned")
+                continue
             logging.info(
                 "jail [%s] Identified %s with %d bad ips", jail, badnet, len(ips)
             )
