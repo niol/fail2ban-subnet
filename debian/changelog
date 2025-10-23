@@ -1,3 +1,9 @@
+fail2ban-subnet (0.6-1) unstable; urgency=medium
+
+  * don't reban already banned subnets
+
+ -- Alexandre Rossi <niol@zincube.net>  Thu, 23 Oct 2025 20:27:24 +0200
+
 fail2ban-subnet (0.5-1) unstable; urgency=medium
 
   * fix not taking into account already banned subnets
