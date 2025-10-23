@@ -1,3 +1,10 @@
+fail2ban-subnet (0.4-1) unstable; urgency=medium
+
+  * fix ip list to str for ban/unban command
+  * fix over-expansion of subnets and add unit tests
+
+ -- Alexandre Rossi <niol@zincube.net>  Thu, 23 Oct 2025 14:39:26 +0200
+
 fail2ban-subnet (0.3-1) unstable; urgency=medium
 
   * new --input-file arg
