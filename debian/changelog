@@ -1,3 +1,9 @@
+fail2ban-subnet (0.5-1) unstable; urgency=medium
+
+  * fix not taking into account already banned subnets
+
+ -- Alexandre Rossi <niol@zincube.net>  Thu, 23 Oct 2025 18:05:06 +0200
+
 fail2ban-subnet (0.4-1) unstable; urgency=medium
 
   * fix ip list to str for ban/unban command
