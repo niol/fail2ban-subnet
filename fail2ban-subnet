@@ -55,6 +55,10 @@ def batched(iterable, chunk_size):
         yield chunk
 
 
+def is_network(ip):
+    return hasattr(ip, "prefixlen")
+
+
 def smallest_net_from(ip):
     if ip.version == 4:
         netmask = V4_NETMASKS.smallest
@@ -99,8 +103,8 @@ def subnets_important(bad_treshold, ip_population):
         #    we have more ips than treshold
         # or
         #    already a subnet
-        important = len(subnets[subnet]) >= bad_treshold or hasattr(
-            next(iter(subnets[subnet])), "prefixlen"
+        important = len(subnets[subnet]) >= bad_treshold or is_network(
+            next(iter(subnets[subnet]))
         )
 
         if not important:
@@ -261,7 +265,7 @@ class Fail2banClient:
             logging.debug("jail [%s] %s %s...", jail, cmd_log, ips)
             ips = [ips]
         else:
-            logging.debug("jail [%s] %s %d ips...", jail, cmd_log, len(ips))
+            logging.debug("jail [%s] %s %d ips/subnets...", jail, cmd_log, len(ips))
 
         for ip_batch in batched(ips, 10):
             self._send_command(["set", jail, cmd] + ips)
@@ -287,9 +291,23 @@ def ban_subnets(args):
             if badnet in ips:
                 logging.debug(f"jail [{jail}] {badnet} was already banned")
                 continue
-            logging.info(
-                "jail [%s] Identified %s with %d bad ips", jail, badnet, len(ips)
-            )
+
+            no_ips = 0
+            no_nets = 0
+            for ip in ips:
+                if is_network(ip):
+                    no_nets = no_nets + 1
+                else:
+                    no_ips = no_ips + 1
+            action_msg = f"jail [{jail}] Identified {badnet} with "
+            if no_ips > 0:
+                action_msg = action_msg + f"{no_ips} bad ips"
+            if no_ips > 0 and no_nets > 0:
+                action_msg = action_msg + " and "
+            if no_nets > 0:
+                action_msg = action_msg + "f{no_nets} bad networks"
+            logging.info(action_msg)
+
             if args.dryrun:
                 for ip in ips:
                     logging.debug(f"\t{ip}")
