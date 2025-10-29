@@ -1,3 +1,11 @@
+fail2ban-subnet (0.7-1) unstable; urgency=medium
+
+  * add Makefile with lint and test entry-points
+  * fix logging messages regarding lists containing both ips and subnets
+  * add back ips on overlaping grown subnets
+
+ -- Alexandre Rossi <niol@zincube.net>  Wed, 29 Oct 2025 16:59:39 +0100
+
 fail2ban-subnet (0.6-1) unstable; urgency=medium
 
   * don't reban already banned subnets
