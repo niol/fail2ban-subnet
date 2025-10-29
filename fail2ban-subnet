@@ -98,6 +98,7 @@ def subnets_important(bad_treshold, ip_population):
             subnets[net] = {ip}
 
     # cleanup subnets below population treshold
+    unimportant = set()
     for subnet in subnets.copy():
         # important if
         #    we have more ips than treshold
@@ -108,9 +109,10 @@ def subnets_important(bad_treshold, ip_population):
         )
 
         if not important:
+            unimportant.update(subnets[subnet])
             del subnets[subnet]
 
-    return subnets
+    return subnets, unimportant
 
 
 def subnets_find_clusters(subnets_cluster_counts, prefixlen):
@@ -157,7 +159,7 @@ def subnets_cluster(subnets, search_netmasks):
 
 
 def bad_networks(bad_treshold, ip_population):
-    subnets = subnets_important(bad_treshold, ip_population)
+    subnets, unimportant = subnets_important(bad_treshold, ip_population)
 
     logging.debug(
         "  %d subnets have more than %d banned ips",
@@ -177,6 +179,8 @@ def bad_networks(bad_treshold, ip_population):
     for subnet, ips in subnets.items():
         if subnet in bad_networks_defs:
             bad_networks_defs[subnet].update(ips)
+            # add back unimportant ips in grown subnets
+            bad_networks_defs[subnet].update([ip for ip in unimportant if ip in subnet])
         else:
             # search if subnet was clustered into a wider one
             for s in bad_networks_defs:

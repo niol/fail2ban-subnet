@@ -62,12 +62,23 @@ class F2bSubnetTests(unittest.TestCase):
             "192.168.238.1",
         ]
 
+        subnets, unimportant = f2bsubnet.subnets_important(3, ips)
         self.assertCountEqual(
-            f2bsubnet.subnets_important(3, ips).keys(),
+            subnets.keys(),
             {
                 ipaddress.IPv4Network("192.168.12.0/24"),
                 ipaddress.IPv4Network("192.168.48.0/22"),
                 ipaddress.IPv4Network("192.168.238.0/24"),
+            },
+        )
+
+        self.assertCountEqual(
+            unimportant,
+            {
+                ipaddress.IPv4Address("192.168.13.234"),
+                ipaddress.IPv4Address("192.168.67.29"),
+                ipaddress.IPv4Address("192.168.13.12"),
+                ipaddress.IPv4Address("192.168.67.31"),
             },
         )
 
@@ -113,7 +124,7 @@ class F2bSubnetTests(unittest.TestCase):
 
     def test_subnets_clustering_smallexample(self):
         ips = [ip for ip in self.load_ips("ai-bots") if ip.startswith("8.210.")]
-        subnets_defs = f2bsubnet.subnets_important(4, ips)
+        subnets_defs, unimportant = f2bsubnet.subnets_important(4, ips)
         subnets = list(subnets_defs.keys())
         self.assertCountEqual(
             subnets,
@@ -150,11 +161,60 @@ class F2bSubnetTests(unittest.TestCase):
             },
         )
 
+    def test_subnets_grow_over_non_nets(self):
+        clustered = f2bsubnet.bad_networks(
+            7,
+            [
+                "169.159.210.192",
+                "169.197.34.126",
+                "169.224.0.0/18",
+                "169.224.0.199",
+                "169.224.104.153",
+                "169.224.104.164",
+                "169.224.104.200",
+                "169.224.104.66",
+                "169.224.104.71",
+                "169.224.105.164",
+                "169.224.105.28",
+                "169.224.105.35",
+                "169.224.10.60",
+                "169.224.106.198",
+                "169.224.119.42",
+                "169.224.120.127",
+                "169.224.120.161",
+                "169.224.120.28",
+                "169.224.12.100",
+                "169.224.63.82",
+                "169.224.121.200",
+                "169.224.121.38",
+                "169.224.12.190",
+                "169.224.1.232",
+            ],
+        )
+        self.assertCountEqual(
+            clustered.keys(),
+            {
+                ipaddress.IPv4Network("169.224.0.0/18"),
+            },
+        )
+        self.assertCountEqual(
+            clustered[ipaddress.IPv4Network("169.224.0.0/18")],
+            {
+                ipaddress.IPv4Network("169.224.0.0/18"),
+                ipaddress.IPv4Address("169.224.0.199"),
+                ipaddress.IPv4Address("169.224.12.190"),
+                ipaddress.IPv4Address("169.224.10.60"),
+                ipaddress.IPv4Address("169.224.1.232"),
+                ipaddress.IPv4Address("169.224.12.100"),
+                ipaddress.IPv4Address("169.224.63.82"),
+            },
+        )
+
     def test_subnets_clustering_biglist(self):
         ips = self.load_ips("ai-bots")
 
         self.maxDiff = None
-        subnets = f2bsubnet.subnets_important(4, ips)
+        subnets, unimportant = f2bsubnet.subnets_important(4, ips)
         self.assertCountEqual(
             subnets.keys(),
             {
