@@ -11,5 +11,8 @@ tarball:
 %:
 	dh $@
 
+override_dh_auto_build:
+	# nothing to build
+
 override_dh_auto_test:
 	./tests/runner
