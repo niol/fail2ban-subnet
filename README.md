@@ -61,9 +61,15 @@ See [nftables.conf - add support for cidr notation #3291](https://github.com/fai
 ## Example run
 
 ```
-systemd[1]: Starting fail2ban-subnet.service - fail2ban block subnet / runjob triggered by timer...
-fail2ban-subnet[1285274]: Identified 47.79.207.0/24 with 69 bad ips
-fail2ban-subnet[1285274]: Identified 2001:ee0:4b71::/48 with 9 bad ips
-fail2ban-subnet[1285274]: Identified 2001:ee0:4f3e::/48 with 748 bad ips
-systemd[1]: fail2ban-subnet.service: Deactivated successfully.
+jail [aibots-http] Identified 186.158.200.0/24 with 7 bad ips
+jail [aibots-http] Identified 217.142.22.0/24 with 9 bad ips
+jail [aibots-http] Identified 207.46.13.0/24 with 7 bad ips
+jail [aibots-http] Identified 114.250.0.0/18 with 2 bad network(s)
+jail [aibots-http] Identified 185.106.28.0/22 with 2 bad network(s)
+jail [aibots-http] Identified 188.132.222.0/24 with 7 bad ips
+jail [aibots-http] Identified 212.237.121.0/24 with 7 bad ips
+jail [aibots-http] Identified 146.174.128.0/18 with 534 bad ips
+jail [aibots-http] Identified 202.76.160.0/20 with 158 bad ips
+jail [aibots-http] Identified 2001:ee0:4b71::/48 with 9 bad ips
+jail [aibots-http] Identified 2001:ee0:4f3e::/48 with 748 bad ips
 ```
