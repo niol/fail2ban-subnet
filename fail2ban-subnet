@@ -309,7 +309,7 @@ def ban_subnets(args):
             if no_ips > 0 and no_nets > 0:
                 action_msg = action_msg + " and "
             if no_nets > 0:
-                action_msg = action_msg + "f{no_nets} bad networks"
+                action_msg = action_msg + f"{no_nets} bad network(s)"
             logging.info(action_msg)
 
             if args.dryrun:
