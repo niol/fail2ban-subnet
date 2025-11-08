@@ -1,3 +1,11 @@
+fail2ban-subnet (0.8-1) unstable; urgency=medium
+
+  * fix typo on log format string
+  * set jail to idle while consolidating banned ips
+  * install README
+
+ -- Alexandre Rossi <niol@zincube.net>  Sat, 08 Nov 2025 16:16:24 +0100
+
 fail2ban-subnet (0.7-1) unstable; urgency=medium
 
   * add Makefile with lint and test entry-points
