@@ -48,7 +48,7 @@ V6_SEARCH_NETMASKS = range(
 )
 
 
-# FIXME: remove when python 3.12 is more common
+# FIXME: replace with itertools.batched() when python 3.12 is more common
 def batched(iterable, chunk_size):
     iterator = iter(iterable)
     while chunk := tuple(itertools.islice(iterator, chunk_size)):
