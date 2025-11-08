@@ -261,6 +261,9 @@ class Fail2banClient:
     def get_jails(self) -> list:
         return self.get_status()["Jail list"]
 
+    def set_jail_idle(self, jail: str, idle: bool):
+        self._send_command(["set", jail, "idle", idle and "on" or "off"])
+
     def get_banned(self, jail: str) -> list:
         return self.get_jail_status(jail)["Actions"]["Banned IP list"]
 
@@ -289,8 +292,11 @@ def ban_subnets(args):
         sys.exit(1)
 
     for jail in f2b.get_jails():
+        f2b.set_jail_idle(jail, True)
+
         banned = f2b.get_banned(jail)
         logging.debug("jail [%s] Found %d banned ips", jail, len(banned))
+
         for badnet, ips in bad_networks(args.count_limit, banned).items():
             if badnet in ips:
                 logging.debug(f"jail [{jail}] {badnet} was already banned")
@@ -318,6 +324,8 @@ def ban_subnets(args):
             else:
                 f2b.unban(jail, list(map(str, ips)))
                 f2b.ban(jail, badnet)
+
+        f2b.set_jail_idle(jail, False)
 
     f2b.close()
 
