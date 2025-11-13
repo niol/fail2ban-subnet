@@ -1,3 +1,9 @@
+fail2ban-subnet (0.9-1) unstable; urgency=medium
+
+  * fix finding overlapping subnets
+
+ -- Alexandre Rossi <niol@zincube.net>  Thu, 13 Nov 2025 10:22:03 +0100
+
 fail2ban-subnet (0.8-1) unstable; urgency=medium
 
   * fix typo on log format string
