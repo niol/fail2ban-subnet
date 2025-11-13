@@ -564,6 +564,27 @@ class F2bSubnetTests(unittest.TestCase):
             },
         )
 
+    def test_overlap_from_below(self):
+        clustered = f2bsubnet.bad_networks(
+            7,
+            [
+                "157.100.64.0/18",
+                "157.100.198.99",
+                "157.100.198.124",
+                "157.100.198.176",
+                "157.100.198.35",
+                "157.100.198.118",
+                "157.100.198.31",
+                "157.100.198.50",
+            ],
+        )
+        self.assertCountEqual(
+            clustered.keys(),
+            {
+                ipaddress.IPv4Network("157.100.0.0/16"),
+            },
+        )
+
     def test_subnets_clustering_biglist(self):
         ips = self.load_ips("ai-bots")
 

@@ -131,8 +131,13 @@ def subnets_find_clusters(subnets_cluster_counts, prefixlen):
 
         last_count = subnets_cluster_counts[subnet]
         if last_count > 2:
-            # we did not find neighbors last times, keep and stop trying to expand
-            clustering_subnets[subnet] = last_count + 1
+            # we did not find neighbors last times
+            if wider_net not in clustering_subnets:
+                # keep and stop trying to expand
+                clustering_subnets[subnet] = last_count + 1
+            else:
+                # other subnets overlap this one, drop
+                pass
             continue
 
         no_candidate = True
