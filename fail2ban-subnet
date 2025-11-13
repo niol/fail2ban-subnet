@@ -116,7 +116,7 @@ def subnets_important(bad_treshold, ip_population):
 
 
 def subnets_find_clusters(subnets_cluster_counts, prefixlen):
-    subnets = list(subnets_cluster_counts.keys())
+    subnets = sorted(list(subnets_cluster_counts.keys()))
     clustering_subnets = collections.OrderedDict()
 
     for idx in range(0, len(subnets)):
