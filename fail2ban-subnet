@@ -154,7 +154,10 @@ def subnets_find_clusters(subnets_cluster_counts, prefixlen):
 def subnets_cluster(subnets, search_netmasks):
     clusters = {s: 0 for s in subnets}
     for netmask in search_netmasks:
-        clusters = subnets_find_clusters(clusters, netmask)
+        if clusters:
+            clusters = subnets_find_clusters(clusters, netmask)
+        else:
+            break
     return clusters
 
 
