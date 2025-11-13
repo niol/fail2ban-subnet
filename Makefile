@@ -6,4 +6,8 @@ lint:
 test:
 	python3 tests/runner
 
-.PHONY: lint test
+release:
+	gbp dch -Rc
+	make -f debian/rules tarball
+
+.PHONY: lint test release
