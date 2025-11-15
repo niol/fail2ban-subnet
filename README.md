@@ -38,7 +38,7 @@ when ban time is elapsed.
 
 ## Requirements
 
-- python3
+- python3 >= 3.6 (for dicts to be ordered)
 - python3-systemd (optional)
 
 ## Requirements if using nftables
