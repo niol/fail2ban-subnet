@@ -31,10 +31,16 @@ are enforced.
 Current limitations:
 
 - unbanning can be slow with large ip sets, which opens a window for
-bad ips to access the protected service, before the whole bad network is
-banned.
-- if using `nftables`, `auto-merge` may lead to failures to unban
-when ban time is elapsed.
+  bad ips to access the protected service, before the whole bad network is
+  banned.
+- if using `nftables`, using `auto-merge` as suggested below leads to failures
+  to unban when ban time is elapsed: ban rules encompassed by larger ban rules
+  are automatically removed by the kernel, and when ban expires, those rules are
+  nowhere to be found when unbanning. The consequence is unwanted noise in the
+  `fail2ban` log.
+- enforcing jail `maxretry` on a whole subnet would require access to `fail2ban`
+  internals or (re)parsing the logs so it should be implemented in `fail2ban`,
+  not as an external script. This is beyond the scope of this script.
 
 ## Requirements
 
