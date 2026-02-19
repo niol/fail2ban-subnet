@@ -111,7 +111,10 @@ def subnets_important(bad_treshold, ip_population):
             unimportant.update(subnets[subnet])
             del subnets[subnet]
 
-    return dict(sorted(subnets.items())), unimportant
+    return (
+        dict(sorted(subnets.items(), key=lambda kv: (kv[0].version, kv[1]))),
+        unimportant,
+    )
 
 
 def subnets_find_clusters(subnets_cluster_counts, prefixlen):

@@ -762,6 +762,31 @@ class F2bSubnetTests(unittest.TestCase):
             },
         )
 
+    def test_subnets_important_v4v6(self):
+        ips = [
+            "192.168.238.100",
+            "192.168.12.4",
+            "192.168.48.0/22",
+            "192.168.238.124",
+            "fe80::/96",
+            "fe80::6",
+            "192.168.67.31",
+            "2001:0002::/48",
+            "192.168.12.28",
+            "fe80::ffff:cafe",
+        ]
+
+        subnets, unimportant = f2bsubnet.subnets_important(3, ips)
+        self.assertCountEqual(
+            subnets.keys(),
+            {
+                ipaddress.IPv4Network("192.168.48.0/22"),
+                ipaddress.IPv6Network("fe80::/96"),
+                ipaddress.IPv6Network("2001:0002::/48"),
+            },
+        )
+
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
