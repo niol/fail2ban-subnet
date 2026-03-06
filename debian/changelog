@@ -1,3 +1,9 @@
+fail2ban-subnet (0.12-1) unstable; urgency=medium
+
+  * fix crash when clustering mixed v4v6 ips
+
+ -- Alexandre Rossi <niol@zincube.net>  Fri, 06 Mar 2026 16:53:22 +0100
+
 fail2ban-subnet (0.11-1) unstable; urgency=medium
 
   * sort subnets only once
