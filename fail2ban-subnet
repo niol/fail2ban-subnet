@@ -194,7 +194,7 @@ def bad_networks(bad_treshold, ip_population):
         else:
             # search if subnet was clustered into a wider one
             for s in bad_networks_defs:
-                if subnet.subnet_of(s):
+                if s.version == subnet.version and subnet.subnet_of(s):
                     bad_networks_defs[s].update(ips)
                     break
 

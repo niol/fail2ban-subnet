@@ -786,6 +786,25 @@ class F2bSubnetTests(unittest.TestCase):
             },
         )
 
+    def test_clustering_v4v6(self):
+        ips = {
+            ipaddress.IPv4Network("157.55.39.0/24"),
+            ipaddress.IPv6Address("2a10:3c0:5:0:1:21:0:5"),
+            ipaddress.IPv6Address("2a10:3c0:5:0:1:44:0:5"),
+            ipaddress.IPv6Address("2a10:3c0:5:0:1:43:0:5"),
+            ipaddress.IPv6Address("2a10:3c0:5:0:1:44:0:2"),
+            ipaddress.IPv6Network("2a10:3c0:5:1::/64"),
+        }
+
+        self.maxDiff = None
+        clustered = f2bsubnet.bad_networks(4, ips)
+        self.assertCountEqual(
+            clustered.keys(),
+            {
+                ipaddress.IPv4Network("157.55.39.0/24"),
+                ipaddress.IPv6Network("2a10:3c0:5::/56"),
+            },
+        )
 
 
 if __name__ == "__main__":
